@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  wireguard:
+    image: linuxserver/wireguard
+    ports:
+      - "51820:51820/udp"
+    volumes:
+      - "./volumes/wireguard:/config"
+      - "/lib/modules:/lib/modules"
+    environment:
+      - PUID=1000
+      - PGID=1000
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    networks:
+      private_network:
+        ipv4_address: 10.5.0.2
+
+  wireguard-ui:
+    image: embarkstudios/wireguard-ui
+    depends_on:
+      - wireguard
+    volumes:
+      - "./volumes/wireguard-ui:/data"
+    environment:
+      - WG_CONF_DIR=/data/conf
+    networks:
+      private_network:
+        ipv4_address: 10.5.0.3
+
+  lazydocker:
+    image: lazyteam/lazydocker
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./volumes/lazydocker:/root/.config/lazydocker"
+    networks:
+      private_network:
+        ipv4_address: 10.5.0.4
+
+  code-server:
+    image: codercom/code-server:latest
+    volumes:
+      - "./volumes/code-server:/home/coder/project"
+    environment:
+      - PASSWORD=your-password-here 
+    networks:
+      private_network:
+        ipv4_address: 10.5.0.5
+
+  gitea:
+    image: gitea/gitea:latest
+    volumes:
+      - "./volumes/gitea:/data"
+    networks:
+      private_network:
+        ipv4_address: 10.5.0.6
+
+  netdata:
+    image: netdata/netdata
+    volumes:
+      - "/proc:/host/proc:ro"
+      - "/sys:/host/sys:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./volumes/netdata:/var/cache/netdata"
+    networks:
+      private_network:
+        ipv4_address: 10.5.0.7
+
+  homer:
+    image: b4bz/homer
+    volumes:
+      - "./volumes/homer:/www/assets"
+    networks:
+      private_network:
+        ipv4_address: 10.5.0.8
+
+  coredns:
+    image: coredns/coredns
+    volumes:
+      - "./volumes/coredns:/root"
+    command: -conf /root/Corefile
+    networks:
+      private_network:
+        ipv4_address: 10.5.0.9
+
+networks:
+  private_network:
+    ipam:
+      config:
+        - subnet: 10.5.0.0/24
+
+volumes:
+  wireguard:
+  wireguard-ui:
+  lazydocker:
+  code-server:
+  gitea:
+  netdata:
+  homer:
+  coredns:
