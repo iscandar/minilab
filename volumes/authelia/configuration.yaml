@@ -1,0 +1,42 @@
+#######################################################################
+#                   Authelia configuration.yml                        #
+#                     Modify this as necesary                         #
+#######################################################################
+
+host: 100.100.100.7
+port: 9091
+log_level: info
+jwt_secret: un_secure_secret_key # Change this to a secure key whatever you want
+default_redirection_url: https://auth.lab # Change to your default URL
+
+authentication_backend:
+  file:
+    path: /config/users_database.yml
+
+access_control:
+  default_policy: deny
+  rules:
+    - domain: "*.admin.lab" # Change to your domain
+      policy: two_factor
+    - domain: "*.dev.lab" # Change to your others sub domain,
+      policy: two_factor
+
+session:
+  name: authelia_session
+  secret: un_secure_session_secret # Change this
+  expiration: 1h
+  inactivity: 5m
+  domain: example.com # Change to your domain
+
+regulation:
+  max_retries: 5
+  find_time: 2m
+  ban_time: 5m
+
+storage:
+  local:
+    path: /config/db.sqlite3
+
+notifier:
+  filesystem:
+    filename: /config/notification.txt

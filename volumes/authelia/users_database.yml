@@ -1,0 +1,13 @@
+#######################################################################
+#                     Authelia users_database.yml                    #
+#                     Modify this as necesary                         #
+#######################################################################
+
+users:
+  admin:
+    displayname: "Administrator"
+    password: "AdminPassword" # Cambia questo
+    email: admin@smtp.admin.lab # Cambia questo
+    groups:
+      - admins
+      - dev
