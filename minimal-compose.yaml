@@ -31,41 +31,60 @@ services:
         max-file: "3"
 
   wireguard-ui:
-    image: embarkstudios/wireguard-ui
+    image: ngoduykhanh/wireguard-ui:latest
+    container_name: wireguard-ui
     depends_on:
       - wireguard
+    cap_add:
+      - NET_ADMIN
+    network_mode: service:wireguard
     volumes:
-      - "./volumes/wireguard-ui:/data"
-    environment:
-      - WG_CONF_DIR=/data/conf
-    networks:
-      admin-subnet:
-        ipv4_address: 100.100.100.4
-
-  lazydocker:
-    image: lazyteam/lazydocker
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./volumes/lazydocker:/root/.config/lazydocker
-    networks:
-      admin-subnet:
-        ipv4_address: 100.100.100.5
+      - ./volumes/wire_ui_data:/app/db
+      - ./volumes/wireguard/config:/etc/wireguard/
+    env_file: ./.env_wire
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
 
+#  lazydocker:
+#    image: lazyteam/lazydocker
+#    dns:
+#      - 127.0.0.11
+#      - 100.100.100.9
+#    volumes:
+#      - /var/run/docker.sock:/var/run/docker.sock
+#      - ./volumes/lazydocker:/root/.config/lazydocker
+#    networks:
+#      admin-subnet:
+#        ipv4_address: 100.100.100.5
+#    logging:
+#      driver: json-file
+#      options:
+#        max-size: "10m"
+#        max-file: "3"
+
   homepage:
     image: ghcr.io/gethomepage/homepage:latest
     container_name: homepage
+    dns:
+      - 127.0.0.11
+      - 100.100.100.9
     environment:
       PUID: 1000
       PGID: 1000
-    ports:
-      - 3000:3000
+    expose:
+      - 3000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.homepage.rule=Host(`home.admin.lab`)"
+      - "traefik.http.routers.homepage.entrypoints=websecure"
+      - "traefik.http.routers.homepage.tls.certresolver=myresolver"
+      - "traefik.http.services.homepage.loadbalancer.server.port=3000"
     volumes:
       - ./volumes/homepage/config:/app/config
+      - ./volumes/homepage/services.yaml:/app/config/services.yaml
       - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
     networks:
@@ -78,96 +97,59 @@ services:
         max-file: "3"
 
 
-  authelia:
-    image: authelia/authelia
-    container_name: authelia
-    volumes:
-      - ./volumes/authelia:/config
-    labels:
-      - 'traefik.enable=true'
-      - 'traefik.http.routers.authelia.rule=Host(`auth.lab`)'
-      - 'traefik.http.routers.authelia.entrypoints=https'
-      - 'traefik.http.routers.authelia.tls=true'
-      - 'traefik.http.routers.authelia.tls.options=default'
-      - 'traefik.http.middlewares.authelia.forwardauth.address=http://authelia:9091/api/authz/forward-auth?authelia-url=https://auth.lab'  # yamllint disable-line rule:line-length
-      - 'traefik.http.middlewares.authelia.forwardauth.trustForwardHeader=true'
-      - 'traefik.http.middlewares.authelia.forwardauth.authResponseHeaders=Remote-User,Remote-Groups,Remote-Name,Remote-Email'  # yamllint disable-line rule:line-length
-    expose:
-      - 9091
-    restart: unless-stopped
-    networks:
-      admin-subnet:
-        ipv4_address: 100.100.100.7
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+# authelia:
+#   image: authelia/authelia
+#   container_name: authelia
+#   aliases:
+#     - "auth.lab"
+#   dns:
+#     - 127.0.0.11
+#     - 100.100.100.9
+#   volumes:
+#     - ./volumes/authelia:/config
+#   expose:
+#     - 9091
+#   restart: unless-stopped
+#   networks:
+#     admin-subnet:
+#       ipv4_address: 100.100.100.7
+#   logging:
+#     driver: json-file
+#     options:
+#       max-size: "10m"
+#       max-file: "3"
 
-  traefik:
-    image: traefik:2.11
-    container_name: traefik
-    depends_on:
-      - step-ca
-    volumes:
-      - ./volumes/traefik:/etc/traefik
-      - ./volumes/step-ca/certs/root_ca.crt:/usr/local/share/ca-certificates/my_root_ca.crt      
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./volumes/traefik_config/traefik.yml:/dynamic-conf.yml
-    networks:
-      admin-subnet:
-        ipv4_address: 100.100.100.10
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    env_file: ./.env_traefik
-    labels:
-      - 'traefik.enable=true'
-      - 'traefik.http.routers.api.rule=Host(`traefik.admin.lab`)'
-      - 'traefik.http.routers.api.entrypoints=https'
-      - 'traefik.http.routers.api.service=api@internal'
-      - 'traefik.http.routers.api.tls=true'
-      - 'traefik.http.routers.api.tls.options=default'
-      - 'traefik.http.routers.api.middlewares=authelia@docker'
-
-      - "traefik.http.routers.traefik0.entrypoints=web"
-      - "traefik.http.routers.traefik0.rule=Host(`traefik.admin.lab`)"
-      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
-
-      - "traefik.http.middlewares.traefik-redirect.redirectscheme.scheme=https"
-      - "traefik.http.routers.traefik0.middlewares=traefik-redirect"
-
-      - "traefik.http.routers.traefik1.entrypoints=websecure"
-      - "traefik.http.routers.traefik1.rule=Host(`traefik.admin.lab`)"
-      - "traefik.http.routers.traefik1.tls=true"
-      - "traefik.http.routers.traefik1.tls.certresolver=myresolver"
-    expose:
-      - 80
-      - 443
-    command:
-      - "--api.insecure=true"
-      - "--api.dashboard=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--providers.docker.network=admin-subnet"
-      - "--providers.file.filename=/dynamic-conf.yml" # TODO
-      - "--providers.file.watch=true"
-      - "--accesslog=false"
-      - "--log=true"
-      - "--log.level=DEBUG"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-      - "--certificatesResolvers.myresolver.acme.tlsChallenge=true"
-      - "--certificatesResolvers.myresolver.acme.email=admin"
-      - "--certificatesResolvers.myresolver.acme.storage=/etc/acme/acme.json"
-      - "--certificatesresolvers.myresolver.acme.caserver=https://ca.admin.lab:9000/acme/acme/directory" # TODO
-      - "--certificatesResolvers.myresolver.acme.httpChallenge=true"
-      - "--certificatesResolvers.myresolver.acme.httpChallenge.entryPoint=web"
+# traefik:
+#   image: traefik:2.11
+#   container_name: traefik
+#   dns:
+#     - 127.0.0.11
+#     - 100.100.100.9
+#   depends_on:
+#     - step-ca
+#   volumes:
+#     - ./volumes/traefik:/etc/traefik
+#     - ./volumes/step-ca/certs/root_ca.crt:/usr/local/share/ca-certificates/my_root_ca.crt      
+#     - /var/run/docker.sock:/var/run/docker.sock
+#     - ./volumes/traefik_config/traefik.yaml:/etc/traefik/traefik.yml
+#   networks:
+#     admin-subnet:
+#       ipv4_address: 100.100.100.10
+#   logging:
+#     driver: json-file
+#     options:
+#       max-size: "10m"
+#       max-file: "3"
+#   env_file: ./.env_traefik
+#   expose:
+#     - 80
+#     - 443
 
   step-ca:
     image: smallstep/step-ca
+    dns:
+      - 127.0.0.11
+      - 100.100.100.9
     expose:
       - 9000
     volumes:
@@ -175,7 +157,7 @@ services:
     networks:
       admin-subnet:
         aliases:
-          - "ca.admin.lab"
+          - "ca.lab"
         ipv4_address: 100.100.100.11
     logging:
       driver: json-file
@@ -192,7 +174,7 @@ services:
     volumes:
       - ./volumes/unbound:/opt/unbound/etc/unbound/
     networks:
-      administration-subnet:
+      admin-subnet:
         ipv4_address: 100.100.100.8
     cap_add:
       - NET_ADMIN

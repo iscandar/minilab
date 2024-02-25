@@ -1,0 +1,10 @@
+services:
+  - name: "WireGuard"
+    icon: "fa fa-lock"
+    url: "https://wire.admin.lab"
+  - name: "Authelia"
+    icon: "fa fa-user-secret"
+    url: "https://auth.lab"
+  - name: "Traefik Dashboard"
+    icon: "fas fa-route"
+    url: "https://traefik.admin.lab"

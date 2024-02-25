@@ -1,1 +1,10 @@
 # TODO add all services
+#     Administration
+100.100.100.3 wire.admin.lab
+#  100.100.100.5 lazy.admin.lab
+100.100.100.6 home.admin.lab
+100.100.100.7 auth.lab
+100.100.100.10 traefik.admin.lab
+100.100.100.11 ca.admin.lab
+100.100.100.11 ca.lab
+100.100.100.9 dns.admin.lab

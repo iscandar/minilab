@@ -6,8 +6,8 @@
 users:
   admin:
     displayname: "Administrator"
-    password: "AdminPassword" # Cambia questo
-    email: admin@smtp.admin.lab # Cambia questo
+    password: "AdminPassword" # Change this
+    email: admin@smtp.admin.lab # Change This
     groups:
       - admins
       - dev
